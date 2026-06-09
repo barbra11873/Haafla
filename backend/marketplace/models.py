@@ -12,7 +12,7 @@ class Category(models.Model):
 
 
 class Service(models.Model):
-    vendor = models.ForeignKey(Vendor, on_delete=models.CASCADE, related_name='services')
+    vendor = models.ForeignKey(Vendor, on_delete=models.CASCADE, related_name='marketplace_services')
     category = models.ForeignKey(Category, on_delete=models.SET_NULL, null=True, blank=True)
     title = models.CharField(max_length=200)
     description = models.TextField(blank=True)
