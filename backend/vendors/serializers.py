@@ -3,9 +3,15 @@ from .models import Vendor, PortfolioItem
 
 
 class PortfolioItemSerializer(serializers.ModelSerializer):
+    file = serializers.ImageField(required=False, allow_null=True)
+
     class Meta:
         model = PortfolioItem
-        fields = ('id', 'title', 'media_url', 'description')
+        fields = ('id', 'title', 'media_url', 'file', 'description')
+
+    def create(self, validated_data):
+        # vendor should be passed by the view
+        return super().create(validated_data)
 
 
 class VendorSerializer(serializers.ModelSerializer):

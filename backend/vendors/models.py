@@ -18,6 +18,7 @@ class PortfolioItem(models.Model):
     vendor = models.ForeignKey(Vendor, on_delete=models.CASCADE, related_name='portfolio')
     title = models.CharField(max_length=200)
     media_url = models.URLField(blank=True)
+    file = models.ImageField(upload_to='vendors/portfolio/', blank=True, null=True)
     description = models.TextField(blank=True)
 
     def __str__(self):

@@ -89,5 +89,9 @@ SIMPLE_JWT = {
 
 STATIC_URL = '/static/'
 
+# Media for user uploaded files (dev local storage)
+MEDIA_URL = '/media/'
+MEDIA_ROOT = BASE_DIR / 'media'
+
 # CORS - allow frontend local during dev
 CORS_ALLOW_ALL_ORIGINS = True
