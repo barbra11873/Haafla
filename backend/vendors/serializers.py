@@ -13,6 +13,19 @@ class PortfolioItemSerializer(serializers.ModelSerializer):
         # vendor should be passed by the view
         return super().create(validated_data)
 
+    def validate_file(self, value):
+        # server-side validation: only allow certain image types and max size 5MB
+        if value is None:
+            return value
+        allowed = ('image/jpeg', 'image/png', 'image/webp')
+        content_type = getattr(value, 'content_type', '')
+        if content_type not in allowed:
+            raise serializers.ValidationError('Unsupported file type. Allowed: jpg, png, webp.')
+        max_size = 5 * 1024 * 1024
+        if value.size > max_size:
+            raise serializers.ValidationError('File too large. Max size is 5MB.')
+        return value
+
 
 class VendorSerializer(serializers.ModelSerializer):
     portfolio = PortfolioItemSerializer(many=True, read_only=True)

@@ -9,6 +9,9 @@ django-cors-headers
 openai
 stripe
 
+django-storages[boto3]
+boto3
+
 dj-database-url
 django-cors-headers
 openai
