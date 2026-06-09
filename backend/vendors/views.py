@@ -1,12 +1,11 @@
 from rest_framework import viewsets, permissions
 from rest_framework.exceptions import PermissionDenied
-from .models import Vendor
+from .models import Vendor, PortfolioItem
 from .serializers import VendorSerializer
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from .serializers import PortfolioItemSerializer
-from .models import PortfolioItem
 from rest_framework import generics
 
 
@@ -20,7 +19,6 @@ class PortfolioUploadView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request, format=None):
-        # ensure user is vendor and has vendor profile
         if getattr(request.user, 'role', None) != 'vendor':
             return Response({'detail': 'Only vendor users may upload portfolio items.'}, status=status.HTTP_403_FORBIDDEN)
         try:
@@ -28,9 +26,7 @@ class PortfolioUploadView(APIView):
         except Exception:
             return Response({'detail': 'Vendor profile not found'}, status=status.HTTP_400_BAD_REQUEST)
 
-        data = request.data.copy()
-        data['vendor'] = vendor.id
-        serializer = PortfolioItemSerializer(data=data)
+        serializer = PortfolioItemSerializer(data=request.data)
         if serializer.is_valid():
             serializer.save(vendor=vendor)
             return Response(serializer.data, status=status.HTTP_201_CREATED)

@@ -1,20 +1,24 @@
 "use client"
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { api } from '../../../lib/api'
 import { useRouter } from 'next/navigation'
+
+const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp']
+const MAX_IMAGE_SIZE = 5 * 1024 * 1024
 
 export default function VendorOnboarding() {
   const [businessName, setBusinessName] = useState('')
   const [description, setDescription] = useState('')
   const [location, setLocation] = useState('')
-  const router = useRouter()
-
+  const [portfolioTitle, setPortfolioTitle] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [success, setSuccess] = useState<string | null>(null)
   const [file, setFile] = useState<File | null>(null)
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
   const [uploadProgress, setUploadProgress] = useState<number | null>(null)
+  const router = useRouter()
 
   useEffect(() => {
     return () => {
@@ -30,20 +34,41 @@ export default function VendorOnboarding() {
     return true
   }
 
-  const handleFileChange = (f: File | null) => {
+  const setPreviewFile = (nextFile: File | null) => {
     if (previewUrl) {
       URL.revokeObjectURL(previewUrl)
       setPreviewUrl(null)
     }
-    setFile(f)
-    if (f) setPreviewUrl(URL.createObjectURL(f))
+    setError(null)
+    setSuccess(null)
+    setUploadProgress(null)
+
+    if (!nextFile) {
+      setFile(null)
+      return
+    }
+
+    if (!ALLOWED_IMAGE_TYPES.includes(nextFile.type)) {
+      setError('Only jpg, png, and webp images are allowed')
+      setFile(null)
+      return
+    }
+
+    if (nextFile.size > MAX_IMAGE_SIZE) {
+      setError('Image must be 5MB or smaller')
+      setFile(null)
+      return
+    }
+
+    setFile(nextFile)
+    setPreviewUrl(URL.createObjectURL(nextFile))
   }
 
-  const resizeImage = (file: File, maxWidth = 1600, maxHeight = 1600, quality = 0.8) => {
+  const resizeImage = (imageFile: File, maxWidth = 1600, maxHeight = 1600, quality = 0.8) => {
     return new Promise<Blob | null>((resolve) => {
-      const img = new Image()
-      img.onload = () => {
-        let { width, height } = img
+      const image = new Image()
+      image.onload = () => {
+        let { width, height } = image
         const aspect = width / height
         if (width > maxWidth) {
           width = maxWidth
@@ -53,42 +78,43 @@ export default function VendorOnboarding() {
           height = maxHeight
           width = Math.round(height * aspect)
         }
+
         const canvas = document.createElement('canvas')
         canvas.width = width
         canvas.height = height
-        const ctx = canvas.getContext('2d')
-        if (!ctx) return resolve(null)
-        ctx.drawImage(img, 0, 0, width, height)
-        canvas.toBlob(
-          (blob) => {
-            resolve(blob)
-          },
-          'image/jpeg',
-          quality,
-        )
+        const context = canvas.getContext('2d')
+        if (!context) return resolve(null)
+        context.drawImage(image, 0, 0, width, height)
+        canvas.toBlob((blob) => resolve(blob), 'image/jpeg', quality)
       }
-      img.onerror = () => resolve(null)
-      img.src = URL.createObjectURL(file)
+      image.onerror = () => resolve(null)
+      image.src = URL.createObjectURL(imageFile)
     })
   }
 
   const submit = async () => {
     setError(null)
+    setSuccess(null)
     if (!validate()) return
+
     setLoading(true)
+    setUploadProgress(null)
+
     try {
-      const payload = {
+      await api.post('/vendors/vendors/', {
         display_name: businessName,
         bio: description,
         location,
-      }
-      await api.post('/vendors/vendors/', payload)
+      })
 
       if (file) {
         const resized = await resizeImage(file)
         if (resized) {
           const form = new FormData()
+          form.append('title', portfolioTitle || `${businessName} portfolio`)
+          form.append('description', description)
           form.append('file', resized, file.name)
+
           await api.post('/vendors/portfolio/', form, {
             headers: { 'Content-Type': 'multipart/form-data' },
             onUploadProgress: (progressEvent: any) => {
@@ -100,10 +126,12 @@ export default function VendorOnboarding() {
         }
       }
 
+      setSuccess('Vendor profile created successfully')
       router.push('/vendor/dashboard')
     } catch (err: any) {
       console.error(err)
-      setError(err?.response?.data || 'Failed to create vendor')
+      const responseData = err?.response?.data
+      setError(typeof responseData === 'string' ? responseData : 'Failed to create vendor')
     } finally {
       setLoading(false)
       setUploadProgress(null)
@@ -114,27 +142,38 @@ export default function VendorOnboarding() {
     <main>
       <h1>Vendor Onboarding</h1>
       <div>
-        <label>Business name</label>
+        <label htmlFor="businessName">Business name</label>
         <br />
-        <input value={businessName} onChange={(e) => setBusinessName(e.target.value)} />
+        <input id="businessName" value={businessName} onChange={(e) => setBusinessName(e.target.value)} />
       </div>
       <div>
-        <label>Description</label>
+        <label htmlFor="description">Description</label>
         <br />
-        <textarea value={description} onChange={(e) => setDescription(e.target.value)} />
+        <textarea id="description" value={description} onChange={(e) => setDescription(e.target.value)} />
       </div>
       <div>
-        <label>Location</label>
+        <label htmlFor="location">Location</label>
         <br />
-        <input value={location} onChange={(e) => setLocation(e.target.value)} />
+        <input id="location" value={location} onChange={(e) => setLocation(e.target.value)} />
       </div>
       <div>
-        <label>Portfolio (optional)</label>
+        <label htmlFor="portfolioTitle">Portfolio title</label>
         <br />
         <input
+          id="portfolioTitle"
+          value={portfolioTitle}
+          onChange={(e) => setPortfolioTitle(e.target.value)}
+          placeholder="Optional, defaults to your business name"
+        />
+      </div>
+      <div>
+        <label htmlFor="portfolioFile">Portfolio image</label>
+        <br />
+        <input
+          id="portfolioFile"
           type="file"
-          accept="image/*"
-          onChange={(e) => handleFileChange(e.target.files ? e.target.files[0] : null)}
+          accept="image/jpeg,image/png,image/webp"
+          onChange={(e) => setPreviewFile(e.target.files ? e.target.files[0] : null)}
         />
         {previewUrl && (
           <div style={{ marginTop: 8 }}>
@@ -144,7 +183,8 @@ export default function VendorOnboarding() {
         )}
       </div>
       {uploadProgress !== null && <div>Upload progress: {uploadProgress}%</div>}
-      {error && <div style={{ color: 'red' }}>{JSON.stringify(error)}</div>}
+      {error && <div style={{ color: 'red' }}>{error}</div>}
+      {success && <div style={{ color: 'green' }}>{success}</div>}
       <div>
         <button disabled={loading} onClick={submit}>
           {loading ? 'Creating...' : 'Create profile'}

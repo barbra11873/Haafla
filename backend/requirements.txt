@@ -8,6 +8,7 @@ dj-database-url
 django-cors-headers
 openai
 stripe
+Pillow
 
 django-storages[boto3]
 boto3
