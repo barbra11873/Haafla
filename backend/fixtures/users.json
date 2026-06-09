@@ -1,0 +1,12 @@
+[
+  {
+    "model": "accounts.user",
+    "pk": 1,
+    "fields": {
+      "username": "testcustomer",
+      "password": "pbkdf2_sha256$260000$dummy$dummyhash",
+      "role": "customer",
+      "email": "testcustomer@example.com"
+    }
+  }
+]
