@@ -7,3 +7,4 @@ dist/
 build/
 .next/
 *.sqlite3
+backend/media/
